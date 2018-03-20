@@ -1,5 +1,5 @@
-mtp-galaxy-bug
-==============
+MTP GetPartialObject bug on Samsung Galaxy
+==========================================
 
 This repository contains a reproducer for the MTP GetPartialObject
 offset bug present on Samsung Galaxy devices. This bug prevents some
@@ -15,12 +15,13 @@ The bug only happens under the following conditions:
 While the above conditions look restrictive they are easily met in
 practice. For instance, the GVFS MTP backend uses the GetPartialObject
 MTP command whenever it reads a file. Since most programs use a block
-which is a large power of 2, the offset is usually a multiple of 512
-bytes. Only the second condition about the file size is rare, its
+size which is a large power of 2, the offset is usually a multiple of
+512 bytes. Only the second condition about the file size is rare, its
 occurrence being 1/512.
 
 When the bug happens, the Samsung Galaxy device does not return the
-requested data and the GetPartialObject command fails after a timeout.
+requested data and the GetPartialObject command fails after a
+time-out.
 
 How to reproduce the issue
 --------------------------
@@ -37,7 +38,8 @@ invoke the `mtp-galaxy-find-files.py` script:
     ID: 1666, filename: IMG_20180312_151120_5.jpg, size: 2514932 bytes
     4 file(s) may fail with GetPartialObject (total: 1688 files)
 
-Then you can invoke the reproducer and pass an object ID that can cause the error:
+Then you can invoke the reproducer and pass an object ID that causes
+the error:
 
     $ ./mtp-galaxy-bug 972
     LIBMTP_Set_Debug: Setting debugging level to 2 (0x02) (on)
@@ -46,8 +48,10 @@ Then you can invoke the reproducer and pass an object ID that can cause the erro
     GetPartialObject: offset = 1554944 bytes, count = 512 bytes
     == FAIL ==
 
-If you don't want to use the provided bug reproducer, you can mount
-the file system with GVFS and copy the file to your machine:
+If you want to trigger the issue without the bug reproducer, you can
+mount the file system with
+[GVFS](https://wiki.gnome.org/Projects/gvfs) and copy the file to your
+machine:
 
     $ gio mount -li | grep activation_root
       activation_root=mtp://[usb:003,009]/
@@ -60,9 +64,9 @@ the file system with GVFS and copy the file to your machine:
 Additional information
 ----------------------
 
-Why doesn't this error happen on Windows? Because the MTP driver on
-Windows does not use the GetPartialObject command. It uses the
-GetObject command instead.
+Why doesn't this happen on Windows? Because the MTP driver on Windows
+does not use the GetPartialObject command. It uses the GetObject
+command instead.
 
 Why doesn't this happen with Android devices not manufactured by
 Samsung? Because Samsung relies on their own MTP stack which is
