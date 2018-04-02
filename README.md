@@ -8,16 +8,15 @@ protocol.
 
 The bug only happens under the following conditions:
 1. the GetPartialObject command is used to read the file
-2. the file size matches the condition `(size % 512) == 500`
-3. the GetPartialObject offset is a multiple of 512 bytes
-4. the GetPartialObject request reaches the end of the file
+2. the GetPartialObject offset is `size - (N * 512) - 500` bytes with
+   `N` being an integer
+3. the GetPartialObject request reaches the end of the file
 
-While the above conditions look restrictive they are easily met in
-practice. For instance, the GVFS MTP backend uses the GetPartialObject
-MTP command whenever it reads a file. Since most programs use a block
-size which is a large power of 2, the offset is usually a multiple of
-512 bytes. Only the second condition about the file size is rare, its
-occurrence being 1/512.
+In practice, most clients of libmtp use a block size which is a power
+of 2, usually a multiple of 512 bytes. So the offset of a
+GetPartialObject request is likely to be a multiple of 512 bytes. This
+condition combined with condition 2 makes the bug occur when
+`(size % 512) == 500` with a probability of 1/512.
 
 When the bug happens, the Samsung Galaxy device does not return the
 requested data and the GetPartialObject command fails after a
@@ -26,9 +25,20 @@ time-out.
 How to reproduce the issue
 --------------------------
 
-The first step is to find a file on your Samsung Galaxy device whose
-size matches the `(size % 512) == 500` condition. For that, you can
-invoke the `mtp-galaxy-find-files.py` script:
+You can invoke the reproducer and pass an object ID of a file:
+
+    $ ./mtp-galaxy-bug 972
+    LIBMTP_Set_Debug: Setting debugging level to 2 (0x02) (on)
+    LIBMTP LIBMTP_Detect_Raw_Devices[695]: Device 0 (VID=04e8 and PID=6860) is a Samsung Galaxy models (MTP).
+    Object 972: size = 1555444 bytes
+    GetPartialObject: offset = 1554944 bytes, count = 512 bytes
+    == FAIL ==
+
+If you want to trigger the issue with
+[GVFS](https://wiki.gnome.org/Projects/gvfs), you have to find a file
+whose size will cause the last USB bulk transfer to be 500 bytes long
+(i.e. `(size % 512) == 500`). To this end, you can invoke the
+`mtp-galaxy-find-files.py` script:
 
     $ ./mtp-galaxy-find-files.py
     Device 0 (VID=04e8 and PID=6860) is a Samsung Galaxy models (MTP).
@@ -38,20 +48,8 @@ invoke the `mtp-galaxy-find-files.py` script:
     ID: 1666, filename: IMG_20180312_151120_5.jpg, size: 2514932 bytes
     4 file(s) may fail with GetPartialObject (total: 1688 files)
 
-Then you can invoke the reproducer and pass an object ID that causes
-the error:
-
-    $ ./mtp-galaxy-bug 972
-    LIBMTP_Set_Debug: Setting debugging level to 2 (0x02) (on)
-    LIBMTP LIBMTP_Detect_Raw_Devices[695]: Device 0 (VID=04e8 and PID=6860) is a Samsung Galaxy models (MTP).
-    Object 972: size = 1555444 bytes
-    GetPartialObject: offset = 1554944 bytes, count = 512 bytes
-    == FAIL ==
-
-If you want to trigger the issue without the bug reproducer, you can
-mount the file system with
-[GVFS](https://wiki.gnome.org/Projects/gvfs) and copy the file to your
-machine:
+Then you can mount the MTP share as a user-space file system and copy
+the file to your machine:
 
     $ gio mount -li | grep activation_root
       activation_root=mtp://[usb:003,009]/

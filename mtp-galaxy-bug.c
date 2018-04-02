@@ -35,10 +35,7 @@ static int partial_read(LIBMTP_mtpdevice_t *device,
 
 	printf("Object %" PRIu32 ": size = %" PRIu64 " bytes\n", object_id, file->filesize);
 
-	if ((file->filesize % 512) != 500) {
-		printf("WARNING: this test expects an object whose size respects 'size %% 512 == 500'\n");
-	}
-	offset = (file->filesize / 512) * 512;
+	offset = file->filesize - 500;
 	printf("GetPartialObject: offset = %" PRIu64 " bytes, count = %" PRIu32 " bytes\n",
 	       offset, count);
 
